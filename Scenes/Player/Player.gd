@@ -1,5 +1,8 @@
 class_name Player extends CharacterBody2D
 
+@export_flags_2d_physics var collision_layers
+@onready var player_collision: CollisionShape2D = $CollisionShape2D
+
 const TILE_SIZE := 32
 var walk_speed := 10.0
 var initial_position := Vector2.ZERO
@@ -23,16 +26,30 @@ func process_player_input() -> void:
     input_direction.y = int(Input.is_action_pressed("Down")) - int(Input.is_action_pressed("Up"))
   
   if input_direction != Vector2.ZERO:
-    is_moving = true
-    initial_position = position
+    if can_move_to(input_direction):
+      is_moving = true
+      initial_position = position
   else:
     is_moving = false
+
+func can_move_to(direction: Vector2):
+  var space_state := get_world_2d().direct_space_state
+  var player_collision_shape = player_collision.shape
+  var transform2d = Transform2D(0, position + direction * (TILE_SIZE))
+  var query = PhysicsShapeQueryParameters2D.new()
+  query.shape = player_collision_shape
+  query.transform = transform2d
+  query.collide_with_areas = false  
+  query.collision_mask = collision_layers
+  query.exclude = [self]
+
+  var result = space_state.intersect_shape(query)
+  return result.is_empty()
 
 func move(delta: float) -> void:
   percent_moved_to_next_tile += walk_speed * delta
   if percent_moved_to_next_tile >= 1.0:
     position = initial_position + (TILE_SIZE * input_direction)
-    print(position)
     percent_moved_to_next_tile = 0.0
     is_moving = false
   else:
